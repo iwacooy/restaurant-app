@@ -27,21 +27,20 @@ type MenuItem struct {
 	Type      MenuType
 }
 
-func seedDB() {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		fmt.Println(err)
-	}
+func seedDB(db *gorm.DB) {
+
 	foodMenu := []MenuItem{
 		{
 			Name:      "Seblak",
 			OrderCode: "seblak_ndower",
 			Price:     10000,
+			Type:      MenuTypeFood,
 		},
 		{
 			Name:      "Bakso",
 			OrderCode: "bakso_tanpa_tepung",
 			Price:     20000,
+			Type:      MenuTypeFood,
 		},
 	}
 
@@ -50,57 +49,51 @@ func seedDB() {
 			Name:      "Es Teh Manis",
 			OrderCode: "s_teh",
 			Price:     5000,
+			Type:      MenuTypeDrink,
 		},
 		{
 			Name:      "Es Jeruk",
 			OrderCode: "s_jeruk",
 			Price:     6000,
+			Type:      MenuTypeDrink,
 		},
 	}
 
 	db.Create(&foodMenu)
 	db.Create(&drinkMenu)
 
-	err = db.AutoMigrate(&MenuItem{})
+	err := db.AutoMigrate(&MenuItem{})
 	if err != nil {
 		fmt.Println(err)
 	}
 
 }
 
-func getFoodMenu(c echo.Context) error {
+func getMenu(c echo.Context) error {
+	menuType := c.FormValue("menu_type")
+
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	var menuData []MenuItem
-
-	db.Where(MenuItem{Type: MenuTypeFood}).Find(&menuData)
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"data": menuData,
-	})
-}
-
-func getDrinkMenu(c echo.Context) error {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var menuData []MenuItem
-
-	db.Where(MenuItem{Type: MenuTypeDrink}).Find(&menuData)
+	db.Where(MenuItem{Type: MenuType(menuType)}).Find(&menuData)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"data": menuData,
 	})
+
 }
+
 func main() {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		fmt.Println(err)
+	}
+	seedDB(db)
 	e := echo.New()
-	e.GET("/menu/food", getFoodMenu)
-	e.GET("/menu/drink", getDrinkMenu)
+	e.GET("/menu", getMenu)
 	e.Logger.Fatal(e.Start(":1323"))
-	seedDB()
+
 }
